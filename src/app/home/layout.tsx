@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -17,7 +17,8 @@ export const metadata: Metadata = {
   description: "Conclave is a platform for creating and sharing AI agents.",
 };
 
-export default function RootLayout({
+
+export default function HomeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -27,7 +28,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SidebarProvider>
+          <AppSidebar />
+          {children}
+        </SidebarProvider>
+
       </body>
     </html>
   );
