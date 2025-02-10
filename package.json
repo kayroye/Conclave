@@ -1,6 +1,6 @@
 {
   "name": "conclave",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -26,6 +26,7 @@
     "clsx": "^2.1.1",
     "express": "^4.21.2",
     "firebase": "^11.3.0",
+    "firebase-admin": "^13.1.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.475.0",
     "next": "15.1.6",

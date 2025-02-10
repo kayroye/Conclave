@@ -8,7 +8,6 @@ export interface User {
 }
 
 export interface UserPreferences {
-  theme?: 'light' | 'dark';
   notifications?: boolean;
   defaultAIProvider?: AIProvider;
 }
