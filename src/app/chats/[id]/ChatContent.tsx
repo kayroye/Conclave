@@ -124,11 +124,16 @@ export default function ChatContent({ chatId }: { chatId: string }) {
       try {
         await Promise.all([loadChat(), loadMessages()]);
         
-        // Initialize socket connection
-        const socket = socketService.connect();
-        if (socket) {
-          console.log('Joining chat room:', chatId);
-          socketService.joinChat(chatId);
+        // Initialize socket connection and join room
+        try {
+          const socket = await socketService.connect();
+          if (socket) {
+            console.log('Connected to socket, joining chat room:', chatId);
+            await socketService.joinChat(chatId);
+            console.log('Successfully joined chat room:', chatId);
+          }
+        } catch (error) {
+          console.error('Error connecting to socket or joining room:', error);
         }
       } catch (error) {
         console.error('Error initializing chat:', error);
@@ -172,6 +177,9 @@ export default function ChatContent({ chatId }: { chatId: string }) {
     }
 
     try {
+      // Try to ensure socket connection before sending
+      await socketService.connect();
+      
       const response = await fetch(`/api/chats/${chatId}/messages`, {
         method: 'POST',
         headers: {
@@ -190,7 +198,7 @@ export default function ChatContent({ chatId }: { chatId: string }) {
       // Add message to local state
       setMessages(prev => [...prev, message]);
       
-      // Emit through socket only after successful save
+      // Emit through socket
       console.log('Emitting message through socket:', message);
       socketService.sendMessage(chatId, message);
       

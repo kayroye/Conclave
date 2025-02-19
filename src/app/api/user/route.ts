@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { auth } from '@/lib/firebase';
 import { User } from '@/lib/types';
-import { signInAnonymously } from 'firebase/auth';
+import { signInAnonymously, signOut } from 'firebase/auth';
 
 
 export async function POST(req: NextRequest) {
@@ -16,10 +16,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create anonymous user in Firebase Auth
-    const user = await signInAnonymously(auth);
-    const userId = user.user?.uid;
+    // Sign out any existing anonymous user first
+    if (auth.currentUser) {
+      await signOut(auth);
+    }
+
+    // Create new anonymous user in Firebase Auth
+    const userCredential = await signInAnonymously(auth);
+    const userId = userCredential.user.uid;
         
+    // Check if user already exists in Firestore
+    const userDoc = await adminDb.doc(`users/${userId}`).get();
+    if (userDoc.exists) {
+      console.log('User already exists, creating new anonymous user');
+      await signOut(auth);
+      return NextResponse.json(
+        { error: 'Please try again' },
+        { status: 409 }
+      );
+    }
+
     // Create user document in Firestore
     const newUser: User = {
       id: userId,
@@ -33,11 +49,16 @@ export async function POST(req: NextRequest) {
     };
 
     await adminDb.doc(`users/${userId}`).set(newUser);
+    console.log('Created new user:', userId, 'with name:', nickname.trim());
 
     return NextResponse.json({ user: newUser });
 
   } catch (error) {
     console.error('Error creating user:', error);
+    // Try to clean up if there was an error
+    if (auth.currentUser) {
+      await signOut(auth);
+    }
     return NextResponse.json(
       { error: 'Failed to create user' },
       { status: 500 }

@@ -59,20 +59,28 @@ const startServer = async () => {
       query: socket.handshake.query
     });
 
-    socket.on('join-chat', (chatId: string) => {
-      // Add user to room tracking
-      if (!activeRooms.has(chatId)) {
-        activeRooms.set(chatId, new Set());
-      }
-      activeRooms.get(chatId)?.add(clientId);
+    socket.on('join-chat', (chatId: string, callback?: (error?: string) => void) => {
+      try {
+        // Add user to room tracking
+        if (!activeRooms.has(chatId)) {
+          activeRooms.set(chatId, new Set());
+        }
+        activeRooms.get(chatId)?.add(clientId);
 
-      socket.join(chatId);
-      console.log('Client joined chat:', {
-        clientId,
-        chatId,
-        rooms: Array.from(socket.rooms),
-        activeUsers: Array.from(activeRooms.get(chatId) || [])
-      });
+        socket.join(chatId);
+        console.log('Client joined chat:', {
+          clientId,
+          chatId,
+          rooms: Array.from(socket.rooms),
+          activeUsers: Array.from(activeRooms.get(chatId) || [])
+        });
+
+        // Send acknowledgment of successful join
+        if (callback) callback();
+      } catch (error) {
+        console.error('Error joining chat:', error);
+        if (callback) callback(error instanceof Error ? error.message : 'Failed to join chat');
+      }
     });
 
     socket.on('leave-chat', (chatId: string) => {

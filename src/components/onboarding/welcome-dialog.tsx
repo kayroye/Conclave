@@ -1,34 +1,18 @@
 import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { User } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
-const USER_ID_COOKIE = 'user_id';
-
-interface WelcomeDialogProps {
-  isOpen: boolean;
-  onComplete: (userId: string) => void;
-}
-
-export function WelcomeDialog({ isOpen, onComplete }: WelcomeDialogProps) {
+export function WelcomeDialog() {
   const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-
+  const router = useRouter();
+  const { toast } = useToast();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nickname.trim()) return;
-
     setIsLoading(true);
-    setError('');
 
     try {
       const response = await fetch('/api/user', {
@@ -36,52 +20,67 @@ export function WelcomeDialog({ isOpen, onComplete }: WelcomeDialogProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ nickname: nickname.trim() }),
+        body: JSON.stringify({ nickname }),
       });
 
       if (!response.ok) {
         const data = await response.json();
+        if (response.status === 409) {
+          // User already exists, try again
+          console.log('Retrying user creation...');
+          return handleSubmit(e);
+        }
         throw new Error(data.error || 'Failed to create user');
       }
 
-      const { user } = await response.json() as { user: User };
-      Cookies.set(USER_ID_COOKIE, user.id, { expires: 365 }); // Store for 1 year
-      onComplete(user.id);
+      const { user } = await response.json();
+      
+      // Set the user ID cookie
+      Cookies.set('user_id', user.id, { expires: 7 });
+      
+      // Redirect to home page
+      router.push('/home');
     } catch (error) {
       console.error('Error creating user:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create user');
+      toast({
+        title: 'Error',
+        description: 'Failed to create user. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Welcome to Conclave!</DialogTitle>
-          <DialogDescription>
-            Join collaborative AI chats with ease. No sign-up required - just choose a nickname to get started.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Input
-              id="nickname"
-              placeholder="Enter your nickname"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              disabled={isLoading}
-            />
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading || !nickname.trim()}>
-            {isLoading ? "Creating your profile..." : "Get Started"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm">
+      <div className="container flex items-center justify-center h-full max-w-lg">
+        <div className="bg-card p-6 rounded-lg shadow-lg w-full space-y-4">
+          <h2 className="text-2xl font-bold text-center">Welcome to Conclave</h2>
+          <p className="text-muted-foreground text-center">
+            Choose a nickname to get started
+          </p>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Your nickname"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading || !nickname.trim()}
+            >
+              {isLoading ? 'Creating...' : 'Continue'}
+            </Button>
+          </form>
+        </div>
+      </div>
+    </div>
   );
 } 

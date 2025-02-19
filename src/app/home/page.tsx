@@ -101,12 +101,6 @@ export default function HomePage() {
     setNewChatDialogOpen(false);
   };
 
-  const handleOnboardingComplete = (userId: string) => {
-    console.log('User created with ID:', userId);
-    // Refresh the page to load the user's data
-    router.refresh();
-  };
-
   const handleCreateChat = async (chatConfig: {
     name: string;
     isPublic: boolean;
@@ -176,10 +170,18 @@ export default function HomePage() {
     );
   }
 
+  if (showWelcome) {
+    return (
+      <div className="min-h-screen">
+        <WelcomeDialog />
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen">
-        <WelcomeDialog isOpen={showWelcome} onComplete={handleOnboardingComplete} />
+        <WelcomeDialog />
       </div>
     );
   }
