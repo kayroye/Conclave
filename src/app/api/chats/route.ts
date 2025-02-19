@@ -1,5 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createChat } from '@/lib/services/chatService';
+import { createChat, getUserChats } from '@/lib/services/chatService';
+
+export async function GET(request: Request) {
+  try {
+    const userId = request.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const chats = await getUserChats(userId);
+    return NextResponse.json({ chats });
+  } catch (error) {
+    console.error('Error fetching chats:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch chats' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {

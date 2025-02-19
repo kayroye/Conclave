@@ -3,16 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { WelcomeDialog } from '@/components/onboarding/welcome-dialog';
-import { User, AIProvider } from '@/lib/types';
+import { User, AIProvider, Chat } from '@/lib/types';
 import Cookies from 'js-cookie';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Plus } from "lucide-react";
+import { MessageCircle, Plus, Lock, Globe } from "lucide-react";
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
 import { NewChatDialog } from "@/components/chat/new-chat-dialog";
 import { Button } from "@/components/ui/button";
+import { formatDistanceToNow } from 'date-fns';
 
 const USER_ID_COOKIE = 'user_id';
 
@@ -21,7 +22,9 @@ export default function HomePage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [newChatDialogOpen, setNewChatDialogOpen] = useState(false);
+
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -50,6 +53,21 @@ export default function HomePage() {
 
         const { user } = await response.json() as { user: User };
         setUser(user);
+
+        // Fetch chat data
+        const chatsResponse = await fetch('/api/chats', {
+          headers: {
+            'x-user-id': userId,
+          },
+        });
+
+        if (!chatsResponse.ok) {
+          throw new Error('Failed to fetch chats');
+        }
+
+        const { chats } = await chatsResponse.json() as { chats: Chat[] };
+        console.log('chats', chats);
+        setChats(chats);
       } catch (error) {
         console.error('Error checking user:', error);
         setShowWelcome(true);
@@ -168,36 +186,65 @@ export default function HomePage() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {user.chats.map((chatId, index) => (
-          <Link key={chatId} href={`/chats/${chatId}`}>
+        {chats.map((chat) => (
+          <Link key={chat.id} href={`/chats/${chat.id}`}>
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="space-y-1">
                 <div className="flex justify-between items-start">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={`/avatars/0${(index % 3) + 1}.png`} />
-                    <AvatarFallback>CH</AvatarFallback>
+                    <AvatarImage src={`/avatars/01.png`} />
+                    <AvatarFallback>{chat.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <Badge variant="secondary">
-                    <MessageCircle className="mr-1 h-3 w-3" />
-                    Active
-                  </Badge>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">
+                      {chat.isPublic ? (
+                        <Globe className="mr-1 h-3 w-3" />
+                      ) : (
+                        <Lock className="mr-1 h-3 w-3" />
+                      )}
+                      {chat.isPublic ? 'Public' : 'Private'}
+                    </Badge>
+                    {chat.messages.length > 0 && (
+                      <Badge variant="secondary">
+                        <MessageCircle className="mr-1 h-3 w-3" />
+                        {chat.messages.length}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <CardTitle className="text-lg">Chat {index + 1}</CardTitle>
-                <CardDescription>Last active 2 hours ago</CardDescription>
+                <CardTitle className="text-lg">{chat.name}</CardTitle>
+                <CardDescription>
+                  {chat.messages.length > 0
+                    ? `Last active ${formatDistanceToNow(chat.createdAt, { addSuffix: true })}`
+                    : 'No messages yet'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  Continue your conversation...
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {chat.messages.length > 0
+                      ? 'Continue your conversation...'
+                      : 'Start a new conversation...'}
+                  </p>
+                  {chat.aiParticipants.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {chat.aiParticipants.map((ai) => (
+                        <Badge key={ai.id} variant="outline">
+                          {ai.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </Link>
         ))}
 
-        {user.chats.length === 0 && (
+        {chats.length === 0 && (
           <Card className="col-span-full">
             <CardHeader>
-              <CardTitle>No chats yet :(</CardTitle>
+              <CardTitle>No chats yet</CardTitle>
               <CardDescription>
                 Start a new chat to begin your conversations!
               </CardDescription>

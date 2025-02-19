@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { ChatHeader } from '@/components/chat/chat-header';
 
 const USER_ID_COOKIE = 'user_id';
 
@@ -89,6 +90,34 @@ export default function ChatContent({ chatId }: { chatId: string }) {
     }
   };
 
+  const handleUpdateChat = async (updates: Partial<Chat>) => {
+    try {
+      const userId = Cookies.get(USER_ID_COOKIE);
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
+      const response = await fetch(`/api/chats/${chatId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update chat');
+      }
+
+      const { chat: updatedChat } = await response.json();
+      setChat(updatedChat);
+    } catch (error) {
+      console.error('Error updating chat:', error);
+      throw error; // Re-throw to handle in the UI
+    }
+  };
+
   useEffect(() => {
     const initializeChat = async () => {
       try {
@@ -151,6 +180,8 @@ export default function ChatContent({ chatId }: { chatId: string }) {
 
   return (
     <div className="flex flex-col h-full">
+      <ChatHeader chat={chat} onUpdateChat={handleUpdateChat} />
+      
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {hasMore && (
           <div className="flex justify-center">

@@ -27,6 +27,7 @@ export interface Chat {
   isPublic: boolean;
   name: string;
   createdAt: Date;
+  updatedAt: Date;
   participants: string[]; // Array of user IDs
   aiParticipants: AIChatParticipant[];
   messages: string[]; // Array of message IDs

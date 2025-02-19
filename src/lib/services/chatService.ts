@@ -25,6 +25,7 @@ export const createChat = async (
     name,
     isPublic,
     createdAt: now,
+    updatedAt: now,
     participants: [creatorId],
     aiParticipants: aiParticipantsWithIds,
     messages: []
@@ -166,5 +167,25 @@ export const getChatMessages = async (
     messages: paginatedMessages.slice(0, limit),
     hasMore
   };
+};
+
+export const updateChat = async (
+  chatId: string,
+  updates: {
+    name?: string;
+    isPublic?: boolean;
+  }
+): Promise<Chat> => {
+  const chatRef = adminDb.collection('chats').doc(chatId);
+  const chatDoc = await chatRef.get();
+  
+  if (!chatDoc.exists) {
+    throw new Error('Chat not found');
+  }
+
+  await chatRef.update(updates);
+  
+  const updatedDoc = await chatRef.get();
+  return updatedDoc.data() as Chat;
 };
 
