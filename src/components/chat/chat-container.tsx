@@ -5,8 +5,13 @@ import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
 import { useChat } from "ai/react";
+import { Chat } from "@/lib/types";
 
-export function ChatContainer() {
+interface ChatContainerProps {
+  chat: Chat;
+}
+
+export function ChatContainer({ chat }: ChatContainerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { messages, input, handleInputChange, handleSubmit } = useChat();
 
@@ -20,7 +25,7 @@ export function ChatContainer() {
 
   return (
     <div className="flex flex-col h-full">
-      <ChatHeader />
+      <ChatHeader chat={chat} />
       <div className="flex-1 overflow-y-auto p-4">
         <ChatMessages messages={messages} />
         <div ref={messagesEndRef} />

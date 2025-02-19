@@ -7,15 +7,21 @@ const http_1 = require("http");
 const next_1 = __importDefault(require("next"));
 const socket_io_1 = require("socket.io");
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+const hostname = dev ? 'localhost' : '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
-const app = (0, next_1.default)({ dev, hostname, port });
+const app = (0, next_1.default)({
+    dev,
+    hostname,
+    port,
+    // Only use turbopack in development
+    turbopack: dev
+});
 const handle = app.getRequestHandler();
 const startServer = async () => {
-    await app.prepare();
+    await app.prepare(); // Prepare the next.js app
     const server = (0, http_1.createServer)(async (req, res) => {
         try {
-            await handle(req, res);
+            await handle(req, res); // let next.js handle all http requests
         }
         catch (err) {
             console.error('Error occurred handling', req.url, err);
@@ -23,9 +29,11 @@ const startServer = async () => {
             res.end('Internal Server Error');
         }
     });
+    // Socket.IO setup
     const io = new socket_io_1.Server(server, {
         cors: {
-            origin: '*',
+            // In production, you should restrict this to your actual domain
+            origin: dev ? '*' : process.env.NEXT_PUBLIC_APP_URL || '*',
             methods: ['GET', 'POST']
         }
     });
@@ -51,7 +59,7 @@ const startServer = async () => {
             console.log('Client disconnected:', socket.id);
         });
     });
-    server.listen(port, () => {
+    server.listen(port, hostname, () => {
         console.log(`> Ready on http://${hostname}:${port}`);
     });
 };
