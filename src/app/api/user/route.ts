@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { signInAnonymously, getAuth } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { User } from '@/lib/types';
+import { signInAnonymously } from 'firebase/auth';
 
 
 export async function POST(req: NextRequest) {
@@ -16,7 +17,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Create anonymous user in Firebase Auth
-    const auth = getAuth();
     const user = await signInAnonymously(auth);
     const userId = user.user?.uid;
         

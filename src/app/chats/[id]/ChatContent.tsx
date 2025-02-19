@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Send } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { ChatHeader } from '@/components/chat/chat-header';
+import { socketService } from '@/lib/services/socketService';
 
 const USER_ID_COOKIE = 'user_id';
 
@@ -122,6 +123,9 @@ export default function ChatContent({ chatId }: { chatId: string }) {
     const initializeChat = async () => {
       try {
         await Promise.all([loadChat(), loadMessages()]);
+        // Connect to socket and join the chat room
+        socketService.connect();
+        socketService.joinChat(chatId);
       } catch (error) {
         console.error('Error initializing chat:', error);
       } finally {
@@ -130,6 +134,17 @@ export default function ChatContent({ chatId }: { chatId: string }) {
     };
 
     initializeChat();
+
+    // Set up socket message handler
+    const unsubscribe = socketService.onMessage((message) => {
+      setMessages(prev => [...prev, message]);
+    });
+
+    // Cleanup function
+    return () => {
+      socketService.leaveChat(chatId);
+      unsubscribe();
+    };
   }, [chatId]);
 
   useEffect(() => {
@@ -164,6 +179,8 @@ export default function ChatContent({ chatId }: { chatId: string }) {
 
       const { message } = await response.json();
       setMessages(prev => [...prev, message]);
+      // Emit the message through socket
+      socketService.sendMessage(chatId, message);
       setMessageInput('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -195,27 +212,37 @@ export default function ChatContent({ chatId }: { chatId: string }) {
           </div>
         )}
         
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.isAI ? 'justify-start' : 'justify-end'
-            }`}
-          >
+        {messages.map((message) => {
+          const userId = Cookies.get(USER_ID_COOKIE);
+          const isCurrentUser = message.senderId === userId;
+          const timestamp = new Date(message.createdAt).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit'
+          });
+          
+          return (
             <div
-              className={`max-w-[70%] rounded-lg p-3 ${
-                message.isAI
-                  ? 'bg-secondary text-secondary-foreground'
-                  : 'bg-primary text-primary-foreground'
+              key={message.id}
+              className={`flex ${
+                isCurrentUser ? 'justify-end' : 'justify-start'
               }`}
             >
-              <div className="text-sm font-medium mb-1">
-                {message.senderName}
+              <div
+                className={`max-w-[70%] rounded-lg p-3 ${
+                  isCurrentUser
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground'
+                }`}
+              >
+                <div className="text-sm font-medium mb-1">
+                  {message.senderName}
+                </div>
+                <div className="break-words">{message.content}</div>
+                <div className="text-xs mt-1 opacity-70">{timestamp}</div>
               </div>
-              <div className="break-words">{message.content}</div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 

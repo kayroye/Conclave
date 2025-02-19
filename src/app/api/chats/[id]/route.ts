@@ -16,7 +16,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
     }
 
     // Check if user is a participant
-    if (!chat.participants.includes(userId)) {
+    if (!chat.participants.includes(userId) && !chat.isPublic) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

@@ -17,6 +17,16 @@ import { formatDistanceToNow } from 'date-fns';
 
 const USER_ID_COOKIE = 'user_id';
 
+interface FirebaseTimestamp {
+  _seconds: number;
+  _nanoseconds: number;
+}
+
+interface ChatResponse extends Omit<Chat, 'createdAt' | 'updatedAt'> {
+  createdAt: FirebaseTimestamp;
+  updatedAt: FirebaseTimestamp;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -65,9 +75,17 @@ export default function HomePage() {
           throw new Error('Failed to fetch chats');
         }
 
-        const { chats } = await chatsResponse.json() as { chats: Chat[] };
+        const { chats } = await chatsResponse.json() as { chats: ChatResponse[] };
         console.log('chats', chats);
-        setChats(chats);
+        
+        // Convert Firebase timestamps to Date objects
+        const parsedChats = chats.map(chat => ({
+          ...chat,
+          createdAt: new Date(chat.createdAt._seconds * 1000),
+          updatedAt: new Date(chat.updatedAt._seconds * 1000)
+        }));
+        
+        setChats(parsedChats);
       } catch (error) {
         console.error('Error checking user:', error);
         setShowWelcome(true);
@@ -215,7 +233,7 @@ export default function HomePage() {
                 <CardTitle className="text-lg">{chat.name}</CardTitle>
                 <CardDescription>
                   {chat.messages.length > 0
-                    ? `Last active ${formatDistanceToNow(chat.createdAt, { addSuffix: true })}`
+                    ? `Last active ${formatDistanceToNow(chat.updatedAt, { addSuffix: true })}`
                     : 'No messages yet'}
                 </CardDescription>
               </CardHeader>

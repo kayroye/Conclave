@@ -95,8 +95,9 @@ export const sendMessage = async (
   }
   
   const now = Timestamp.now().toDate();
+  const messageId = uuidv4();
   const newMessage: ChatMessage = {
-    id: uuidv4(),
+    id: messageId,
     content,
     createdAt: now,
     updatedAt: now,
@@ -105,8 +106,13 @@ export const sendMessage = async (
     isAI
   };
   
+  // Store the message in the messages collection
+  await adminDb.collection('messages').doc(messageId).set(newMessage);
+  
+  // Update the chat with the new message ID and timestamp
   await chatRef.update({
-    messages: FieldValue.arrayUnion(newMessage)
+    messages: FieldValue.arrayUnion(messageId),
+    updatedAt: now
   });
   
   return newMessage;
@@ -148,18 +154,36 @@ export const getChatMessages = async (
   }
   
   const chat = chatDoc.data() as Chat;
-  let messages = chat.messages as unknown as ChatMessage[];
+  const messageIds = chat.messages;
+  
+  // Get all messages from the messages collection
+  const messagesSnapshot = await Promise.all(
+    messageIds.map(id => adminDb.collection('messages').doc(id).get())
+  );
+  
+  const messages = messagesSnapshot
+    .filter(doc => doc.exists)
+    .map(doc => {
+      const data = doc.data()!;
+      // Convert Firestore Timestamps to Date objects
+      return {
+        ...data,
+        createdAt: data.createdAt.toDate(),
+        updatedAt: data.updatedAt.toDate()
+      } as ChatMessage;
+    });
   
   // Sort messages by createdAt in descending order (newest first)
   messages.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   
   // If we have a timestamp, filter messages before that time
+  let filteredMessages = messages;
   if (beforeTimestamp) {
-    messages = messages.filter(msg => msg.createdAt.getTime() < beforeTimestamp.getTime());
+    filteredMessages = messages.filter(msg => msg.createdAt.getTime() < beforeTimestamp.getTime());
   }
   
   // Get one more than the limit to check if there are more messages
-  const paginatedMessages = messages.slice(0, limit + 1);
+  const paginatedMessages = filteredMessages.slice(0, limit + 1);
   const hasMore = paginatedMessages.length > limit;
   
   // Return only the requested number of messages
