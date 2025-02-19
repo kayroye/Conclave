@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: conclave
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false # This will be set manually in Render's dashboard
+    healthCheckPath: /
+    autoDeploy: true 

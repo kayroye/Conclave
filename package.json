@@ -2,6 +2,9 @@
   "name": "conclave",
   "version": "0.3.6",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "tsc -p tsconfig.server.json && node dist/server.js",
     "build": "next build && tsc -p tsconfig.server.json",
