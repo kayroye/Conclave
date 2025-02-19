@@ -23,11 +23,13 @@ export type AIProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
 export interface Chat {
   id: string;
+  joinCode: string;
+  isPublic: boolean;
   name: string;
   createdAt: Date;
   participants: string[]; // Array of user IDs
   aiParticipants: AIChatParticipant[];
-  messages: ChatMessage[];
+  messages: string[]; // Array of message IDs
 }
 
 export interface AIChatParticipant {
@@ -42,6 +44,7 @@ export interface ChatMessage {
   id: string;
   content: string;
   createdAt: Date;
+  updatedAt: Date;
   senderId: string; // Can be user ID or AI participant ID
   senderName: string;
   isAI: boolean;

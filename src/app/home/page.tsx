@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { WelcomeDialog } from '@/components/onboarding/welcome-dialog';
-import { User } from '@/lib/types';
+import { User, AIProvider } from '@/lib/types';
 import Cookies from 'js-cookie';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Plus } from "lucide-react";
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
+import { NewChatDialog } from "@/components/chat/new-chat-dialog";
+import { Button } from "@/components/ui/button";
 
 const USER_ID_COOKIE = 'user_id';
 
@@ -19,7 +21,7 @@ export default function HomePage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-
+  const [newChatDialogOpen, setNewChatDialogOpen] = useState(false);
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -59,8 +61,46 @@ export default function HomePage() {
     checkUser();
   }, [router]);
 
+  const handleNewChatDialogClose = () => {
+    setNewChatDialogOpen(false);
+  };
+
   const handleOnboardingComplete = (userId: string) => {
     console.log('User created with ID:', userId);
+    // Refresh the page to load the user's data
+    router.refresh();
+  };
+
+  const handleCreateChat = async (chatConfig: {
+    name: string;
+    isPublic: boolean;
+    aiParticipants: {
+      name: string;
+      provider: AIProvider;
+      model: string;
+    }[];
+  }) => {
+    try {
+      const userId = Cookies.get(USER_ID_COOKIE);
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId || '',
+        },
+        body: JSON.stringify(chatConfig),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create chat');
+      }
+
+      const { chatId } = await response.json();
+      router.push(`/chats/${chatId}`);
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      // You might want to show an error toast here
+    }
   };
 
   if (isLoading) {
@@ -115,14 +155,17 @@ export default function HomePage() {
           <h1 className="text-3xl font-bold">Welcome back{user.name ? `, ${user.name}` : ''}</h1>
           <p className="text-muted-foreground">Here are your recent chats</p>
         </div>
-        <Link 
-          href="/chats/new" 
-          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
+        <Button onClick={() => setNewChatDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New Chat
-        </Link>
+        </Button>
       </div>
+
+      <NewChatDialog
+        isOpen={newChatDialogOpen}
+        onClose={handleNewChatDialogClose}
+        onCreateChat={handleCreateChat}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {user.chats.map((chatId, index) => (
