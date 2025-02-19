@@ -1,6 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 import { ChatMessage } from '../types';
 import { config } from '../config';
+import Cookies from 'js-cookie';
+
+const USER_ID_COOKIE = 'user_id';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -10,13 +13,15 @@ class SocketService {
 
   connect() {
     if (!this.socket) {
-      console.log('Connecting to Socket.IO server at:', config.socketUrl);
+      const userId = Cookies.get(USER_ID_COOKIE);
+      console.log('Connecting to Socket.IO server at:', config.socketUrl, 'with user ID:', userId);
       
       this.socket = io(config.socketUrl, {
         transports: ['websocket', 'polling'],
         reconnectionAttempts: this.maxReconnectAttempts,
         reconnectionDelay: 1000,
-        timeout: 20000
+        timeout: 20000,
+        query: { userId }
       });
 
       this.socket.on('connect', () => {
@@ -35,8 +40,13 @@ class SocketService {
       });
 
       this.socket.on('message-received', (message: ChatMessage) => {
-        console.log('Received message:', message);
-        this.messageHandlers.forEach(handler => handler(message));
+        const userId = Cookies.get(USER_ID_COOKIE);
+        console.log('Received message:', message, 'current user:', userId);
+        
+        // Only process messages from other users
+        if (message.senderId !== userId) {
+          this.messageHandlers.forEach(handler => handler(message));
+        }
       });
 
       this.socket.on('disconnect', (reason) => {

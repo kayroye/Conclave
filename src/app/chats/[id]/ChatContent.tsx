@@ -123,9 +123,13 @@ export default function ChatContent({ chatId }: { chatId: string }) {
     const initializeChat = async () => {
       try {
         await Promise.all([loadChat(), loadMessages()]);
-        // Connect to socket and join the chat room
-        socketService.connect();
-        socketService.joinChat(chatId);
+        
+        // Initialize socket connection
+        const socket = socketService.connect();
+        if (socket) {
+          console.log('Joining chat room:', chatId);
+          socketService.joinChat(chatId);
+        }
       } catch (error) {
         console.error('Error initializing chat:', error);
       } finally {
@@ -137,11 +141,15 @@ export default function ChatContent({ chatId }: { chatId: string }) {
 
     // Set up socket message handler
     const unsubscribe = socketService.onMessage((message) => {
-      setMessages(prev => [...prev, message]);
+      console.log('Received message in chat:', chatId, message);
+      if (message.senderId !== Cookies.get(USER_ID_COOKIE)) {
+        setMessages(prev => [...prev, message]);
+      }
     });
 
     // Cleanup function
     return () => {
+      console.log('Leaving chat room:', chatId);
       socketService.leaveChat(chatId);
       unsubscribe();
     };
@@ -178,9 +186,14 @@ export default function ChatContent({ chatId }: { chatId: string }) {
       }
 
       const { message } = await response.json();
+      
+      // Add message to local state
       setMessages(prev => [...prev, message]);
-      // Emit the message through socket
+      
+      // Emit through socket only after successful save
+      console.log('Emitting message through socket:', message);
       socketService.sendMessage(chatId, message);
+      
       setMessageInput('');
     } catch (error) {
       console.error('Error sending message:', error);

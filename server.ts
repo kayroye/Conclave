@@ -46,48 +46,89 @@ const startServer = async () => {
     pingInterval: 25000
   });
 
-  // Socket.IO connection handling
+  // Track active users in rooms
+  const activeRooms = new Map<string, Set<string>>();
+
   io.on('connection', (socket) => {
     const clientId = socket.id;
     console.log('Client connected:', {
       id: clientId,
       transport: socket.conn.transport.name,
       address: socket.handshake.address,
-      url: socket.handshake.url
+      url: socket.handshake.url,
+      query: socket.handshake.query
     });
 
     socket.on('join-chat', (chatId: string) => {
+      // Add user to room tracking
+      if (!activeRooms.has(chatId)) {
+        activeRooms.set(chatId, new Set());
+      }
+      activeRooms.get(chatId)?.add(clientId);
+
       socket.join(chatId);
       console.log('Client joined chat:', {
         clientId,
         chatId,
-        rooms: Array.from(socket.rooms)
+        rooms: Array.from(socket.rooms),
+        activeUsers: Array.from(activeRooms.get(chatId) || [])
       });
     });
 
     socket.on('leave-chat', (chatId: string) => {
+      // Remove user from room tracking
+      activeRooms.get(chatId)?.delete(clientId);
+      if (activeRooms.get(chatId)?.size === 0) {
+        activeRooms.delete(chatId);
+      }
+
       socket.leave(chatId);
       console.log('Client left chat:', {
         clientId,
         chatId,
-        rooms: Array.from(socket.rooms)
+        rooms: Array.from(socket.rooms),
+        remainingUsers: Array.from(activeRooms.get(chatId) || [])
       });
     });
 
     socket.on('new-message', (chatId: string, message: ChatMessage) => {
+      // Verify the sender is in the room
+      if (!socket.rooms.has(chatId)) {
+        console.warn('Client tried to send message to room they are not in:', {
+          clientId,
+          chatId,
+          message
+        });
+        return;
+      }
+
       console.log('Broadcasting message:', {
         from: clientId,
         to: chatId,
-        message
+        message,
+        activeUsers: Array.from(activeRooms.get(chatId) || [])
       });
+
+      // Broadcast to all clients in the room except sender
       socket.to(chatId).emit('message-received', message);
     });
 
     socket.on('disconnect', (reason) => {
+      // Clean up room tracking
+      for (const [roomId, users] of activeRooms.entries()) {
+        if (users.has(clientId)) {
+          users.delete(clientId);
+          if (users.size === 0) {
+            activeRooms.delete(roomId);
+          }
+        }
+      }
+
       console.log('Client disconnected:', {
         id: clientId,
         reason,
-        rooms: Array.from(socket.rooms)
+        rooms: Array.from(socket.rooms),
+        activeRooms: Array.from(activeRooms.entries())
       });
     });
   });
