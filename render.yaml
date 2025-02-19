@@ -9,5 +9,9 @@ services:
         value: production
       - key: NEXT_PUBLIC_APP_URL
         sync: false # This will be set manually in Render's dashboard
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-store
     healthCheckPath: /
     autoDeploy: true 
