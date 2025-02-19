@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getChatMessages, sendMessage } from '@/lib/services/chatService';
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const userId = request.headers.get('x-user-id');
     if (!userId) {
@@ -28,10 +26,8 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const userId = request.headers.get('x-user-id');
     if (!userId) {
