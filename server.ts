@@ -10,9 +10,7 @@ const port = parseInt(process.env.PORT || '3000', 10);
 const app = next({ 
   dev,
   hostname,
-  port,
-  // Only use turbopack in development
-  turbopack: dev 
+  port
 });
 const handle = app.getRequestHandler();
 
