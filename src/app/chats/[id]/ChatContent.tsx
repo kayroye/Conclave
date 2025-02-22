@@ -217,16 +217,17 @@ export default function ChatContent({ chatId }: { chatId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-background">
       <ChatHeader chat={chat} onUpdateChat={handleUpdateChat} />
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background">
         {hasMore && (
           <div className="flex justify-center">
             <Button
               variant="ghost"
               onClick={loadMoreMessages}
               disabled={loadingMore}
+              className="hover:bg-accent hover:text-accent-foreground"
             >
               {loadingMore ? 'Loading...' : 'Load More'}
             </Button>
@@ -252,7 +253,7 @@ export default function ChatContent({ chatId }: { chatId: string }) {
                 className={`max-w-[70%] rounded-lg p-3 ${
                   isCurrentUser
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-secondary-foreground'
+                    : 'bg-muted text-muted-foreground'
                 }`}
               >
                 <div className="text-sm font-medium mb-1">
@@ -269,15 +270,15 @@ export default function ChatContent({ chatId }: { chatId: string }) {
 
       <form
         onSubmit={handleSendMessage}
-        className="border-t p-4 flex gap-2 items-center"
+        className="border-t border-border p-4 flex gap-2 items-center bg-background"
       >
         <Input
           value={messageInput}
           onChange={(e) => setMessageInput(e.target.value)}
           placeholder="Type a message..."
-          className="flex-1"
+          className="flex-1 bg-background"
         />
-        <Button type="submit" size="icon">
+        <Button type="submit" size="icon" className="bg-primary text-primary-foreground hover:bg-primary/90">
           <Send className="h-4 w-4" />
         </Button>
       </form>

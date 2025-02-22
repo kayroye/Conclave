@@ -48,13 +48,13 @@ const startServer = async () => {
     const activeRooms = new Map();
     io.on('connection', (socket) => {
         const clientId = socket.id;
-        console.log('Client connected:', {
-            id: clientId,
-            transport: socket.conn.transport.name,
-            address: socket.handshake.address,
-            url: socket.handshake.url,
-            query: socket.handshake.query
-        });
+        /*console.log('Client connected:', {
+          id: clientId,
+          transport: socket.conn.transport.name,
+          address: socket.handshake.address,
+          url: socket.handshake.url,
+          query: socket.handshake.query
+        });*/
         socket.on('join-chat', (chatId, callback) => {
             try {
                 // Add user to room tracking
@@ -103,12 +103,12 @@ const startServer = async () => {
                 });
                 return;
             }
-            console.log('Broadcasting message:', {
-                from: clientId,
-                to: chatId,
-                message,
-                activeUsers: Array.from(activeRooms.get(chatId) || [])
-            });
+            /*console.log('Broadcasting message:', {
+              from: clientId,
+              to: chatId,
+              message,
+              activeUsers: Array.from(activeRooms.get(chatId) || [])
+            });*/
             // Broadcast to all clients in the room except sender
             socket.to(chatId).emit('message-received', message);
         });

@@ -213,3 +213,24 @@ export const updateChat = async (
   return updatedDoc.data() as Chat;
 };
 
+export const joinChat = async (joinCode: string, userId: string) => {
+  const chatRef = adminDb.collection('chats').where('joinCode', '==', joinCode).limit(1);
+  const querySnapshot = await chatRef.get();
+  if (querySnapshot.empty) {
+    throw new Error('Invalid join code');
+  }
+
+  const chat = querySnapshot.docs[0].data() as Chat;
+
+  await adminDb.collection('chats').doc(chat.id).update({
+    participants: FieldValue.arrayUnion(userId)
+  });
+
+  await adminDb.collection('users').doc(userId).update({
+    chats: FieldValue.arrayUnion(chat.id)
+  });
+
+  return chat;
+};
+
+

@@ -12,6 +12,7 @@ import { MessageCircle, Plus, Lock, Globe } from "lucide-react";
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
 import { NewChatDialog } from "@/components/chat/new-chat-dialog";
+import { JoinChatDialog } from "@/components/chat/join-chat-dialog";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from 'date-fns';
 
@@ -34,68 +35,81 @@ export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
   const [newChatDialogOpen, setNewChatDialogOpen] = useState(false);
+  const [joinChatDialogOpen, setJoinChatDialogOpen] = useState(false);
+  const [skeletonCount, setSkeletonCount] = useState(3);
 
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const userId = Cookies.get(USER_ID_COOKIE);
-        if (!userId) {
+  const checkUser = async () => {
+    try {
+      const userId = Cookies.get(USER_ID_COOKIE);
+      if (!userId) {
+        setShowWelcome(true);
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/user', {
+        headers: {
+          'x-user-id': userId,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          Cookies.remove(USER_ID_COOKIE);
           setShowWelcome(true);
           setIsLoading(false);
           return;
         }
-
-        const response = await fetch('/api/user', {
-          headers: {
-            'x-user-id': userId,
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            Cookies.remove(USER_ID_COOKIE);
-            setShowWelcome(true);
-            setIsLoading(false);
-            return;
-          }
-          throw new Error('Failed to fetch user');
-        }
-
-        const { user } = await response.json() as { user: User };
-        setUser(user);
-
-        // Fetch chat data
-        const chatsResponse = await fetch('/api/chats', {
-          headers: {
-            'x-user-id': userId,
-          },
-        });
-
-        if (!chatsResponse.ok) {
-          throw new Error('Failed to fetch chats');
-        }
-
-        const { chats } = await chatsResponse.json() as { chats: ChatResponse[] };
-        console.log('chats', chats);
-        
-        // Convert Firebase timestamps to Date objects
-        const parsedChats = chats.map(chat => ({
-          ...chat,
-          createdAt: new Date(chat.createdAt._seconds * 1000),
-          updatedAt: new Date(chat.updatedAt._seconds * 1000)
-        }));
-        
-        setChats(parsedChats);
-      } catch (error) {
-        console.error('Error checking user:', error);
-        setShowWelcome(true);
-      } finally {
-        setIsLoading(false);
+        throw new Error('Failed to fetch user');
       }
-    };
 
+      const { user } = await response.json() as { user: User };
+      setUser(user);
+
+      // Fetch chat data
+      const chatsResponse = await fetch('/api/chats', {
+        headers: {
+          'x-user-id': userId,
+        },
+      });
+
+      if (!chatsResponse.ok) {
+        throw new Error('Failed to fetch chats');
+      }
+
+      const { chats } = await chatsResponse.json() as { chats: ChatResponse[] };
+      console.log('chats', chats);
+      
+      // Store the chat count in localStorage
+      localStorage.setItem('chat_count', chats.length.toString());
+      
+      // Convert Firebase timestamps to Date objects
+      const parsedChats = chats.map(chat => ({
+        ...chat,
+        createdAt: new Date(chat.createdAt._seconds * 1000),
+        updatedAt: new Date(chat.updatedAt._seconds * 1000)
+      }));
+      
+      setChats(parsedChats);
+    } catch (error) {
+      console.error('Error checking user:', error);
+      setShowWelcome(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     checkUser();
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    // Try to get the stored chat count from localStorage
+    const storedCount = localStorage.getItem('chat_count');
+    if (storedCount) {
+      setSkeletonCount(parseInt(storedCount, 10));
+    }
+  }, []);
 
   const handleNewChatDialogClose = () => {
     setNewChatDialogOpen(false);
@@ -133,6 +147,33 @@ export default function HomePage() {
     }
   };
 
+  const handleJoinChat = async (joinCode: string) => {
+    try {
+      const userId = Cookies.get(USER_ID_COOKIE);
+      const response = await fetch('/api/chats/join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId || '',
+        },
+        body: JSON.stringify({ joinCode, userId }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Invalid join code');
+        }
+        throw new Error('Failed to join chat');
+      }
+
+      const { id } = await response.json();
+      router.push(`/chats/${id}`);
+    } catch (error) {
+      console.error('Error joining chat:', error);
+      throw error;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
@@ -145,7 +186,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
+          {Array(skeletonCount).fill(0).map((_, i) => (
             <Card key={i} className="hover:shadow-lg transition-shadow">
               <CardHeader className="space-y-1">
                 <div className="flex justify-between items-start">
@@ -173,7 +214,10 @@ export default function HomePage() {
   if (showWelcome) {
     return (
       <div className="min-h-screen">
-        <WelcomeDialog />
+        <WelcomeDialog onComplete={() => {
+          setShowWelcome(false);
+          checkUser();
+        }} />
       </div>
     );
   }
@@ -181,7 +225,10 @@ export default function HomePage() {
   if (!user) {
     return (
       <div className="min-h-screen">
-        <WelcomeDialog />
+        <WelcomeDialog onComplete={() => {
+          setShowWelcome(false);
+          checkUser();
+        }} />
       </div>
     );
   }
@@ -190,19 +237,30 @@ export default function HomePage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Welcome back{user.name ? `, ${user.name}` : ''}</h1>
-          <p className="text-muted-foreground">Here are your recent chats</p>
+          <h1 className="text-3xl font-bold">Welcome back{user.name ? `, ${user.name}` : ''}!</h1>
+          <p className="text-muted-foreground">Here are your recent chats:</p>
         </div>
-        <Button onClick={() => setNewChatDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Chat
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setJoinChatDialogOpen(true)}>
+            Join Chat
+          </Button>
+          <Button onClick={() => setNewChatDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Chat
+          </Button>
+        </div>
       </div>
 
       <NewChatDialog
         isOpen={newChatDialogOpen}
         onClose={handleNewChatDialogClose}
         onCreateChat={handleCreateChat}
+      />
+
+      <JoinChatDialog
+        isOpen={joinChatDialogOpen}
+        onClose={() => setJoinChatDialogOpen(false)}
+        onJoinChat={handleJoinChat}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -266,7 +324,7 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle>No chats yet</CardTitle>
               <CardDescription>
-                Start a new chat to begin your conversations!
+                Start or join a new chat to begin your conversations!
               </CardDescription>
             </CardHeader>
           </Card>

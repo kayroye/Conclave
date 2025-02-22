@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
-export function WelcomeDialog() {
+export interface WelcomeDialogProps {
+  onComplete: () => void;
+}
+
+export function WelcomeDialog({ onComplete }: WelcomeDialogProps) {
   const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +40,8 @@ export function WelcomeDialog() {
       // Set the user ID cookie
       Cookies.set('user_id', user.id, { expires: 7 });
       
-      // Redirect to home page
-      router.push('/home');
+      // Call onComplete instead of router navigation
+      onComplete();
     } catch (error) {
       console.error('Error creating user:', error);
       toast({
@@ -53,12 +55,12 @@ export function WelcomeDialog() {
   };
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm">
-      <div className="container flex items-center justify-center h-full max-w-lg">
-        <div className="bg-card p-6 rounded-lg shadow-lg w-full space-y-4">
-          <h2 className="text-2xl font-bold text-center">Welcome to Conclave</h2>
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="w-full max-w-lg p-6 mx-auto">
+        <div className="bg-card p-6 rounded-lg shadow-lg w-full space-y-4 border border-border">
+          <h2 className="text-2xl font-bold text-center">Welcome to Conclave!</h2>
           <p className="text-muted-foreground text-center">
-            Choose a nickname to get started
+            Choose a nickname to get started.
           </p>
           
           <form onSubmit={handleSubmit} className="space-y-4">
