@@ -1,7 +1,7 @@
 <div align="center">
 
 # Conclave
-### Multi-User AI Chat Platform
+### Multi-User AI Chat Platform (WIP)
 
 A real-time chat application that allows users to create group conversations with both humans and AI participants. Built with Next.js, Socket.IO, and Firebase, this platform makes collaborative AI interactions seamless and intuitive.
 
